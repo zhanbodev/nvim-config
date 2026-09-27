@@ -1,3 +1,11 @@
+local function project_root()
+	local buffer_path = vim.api.nvim_buf_get_name(0)
+	local start_path = buffer_path ~= "" and vim.fs.dirname(buffer_path) or vim.uv.cwd()
+
+	-- 优先以当前文件所属 Git 仓库为项目范围；非 Git 项目沿用当前工作目录。
+	return vim.fs.root(start_path, ".git") or vim.uv.cwd()
+end
+
 return {
 	"ibhagwan/fzf-lua",
 	cmd = "FzfLua",
@@ -18,8 +26,9 @@ return {
 		},
 		{ "<leader>fr", "<cmd>FzfLua oldfiles<cr>",         desc = "Recent files (fzf-lua)" },
 		{ "<leader>fs", "<cmd>FzfLua live_grep_native<cr>", desc = "Live grep (fzf-lua, fastest)" },
-		-- fc: 搜光标下的单词 —— 用普通字符串模式,不加 \b 边界,UI 干净;
-		--     可以在搜索框继续往后输入字符细化过滤.
+		-- fc: 从光标下的单词开始实时搜索整个项目. 这是完整搜索入口:
+		--     从项目根目录开始,包含 hidden / ignored 文件,只排除 Git 元数据.
+		--     修改输入内容会重新执行 rg,而不是只在初始结果中做二次过滤.
 		{
 			"<leader>fc",
 			function()
@@ -28,13 +37,19 @@ return {
 					vim.notify("No word under cursor", vim.log.levels.WARN)
 					return
 				end
-				require("fzf-lua").grep({
+				require("fzf-lua").live_grep_native({
 					search = cword,
 					no_esc = false, -- 把特殊符号转义掉, 当字面量搜
+					cwd = project_root(),
+					hidden = true,
+					no_ignore = true,
+					-- 不复用下面为快速搜索准备的排除规则,确保 fc 覆盖整个项目.
+					rg_opts = "--column --line-number --no-heading --color=always --smart-case "
+						.. "-g '!.git/**'",
 					prompt = "  Grep word> ",
 				})
 			end,
-			desc = "Grep word under cursor",
+			desc = "Live grep from word under cursor",
 		},
 		{ "<leader>fb", "<cmd>FzfLua buffers<cr>", desc = "Switch buffer (fzf-lua)" },
 	},

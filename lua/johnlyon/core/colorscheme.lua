@@ -9,7 +9,7 @@
 local M = {}
 
 local file_path = vim.fn.stdpath("data") .. "/.nvim.colorscheme-persist.lua"
-local fallback = "kanagawa"
+local fallback = "abyss"
 
 -- 启动后应用保存的主题（由 init.lua 在 lazy 加载完成后调用）
 function M.apply()
